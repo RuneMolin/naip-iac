@@ -1,0 +1,42 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!terraform.tfvars.example
+terraform.tfplan
+
+# Kubernetes
+kubeconfig*.yaml
+*.kubeconfig
+kube_config_*.yaml
+
+# Secrets
+*.key
+*.pem
+secrets/
+.env
+*.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Terraform SSH keys
+naip-k8s-key
+naip-k8s-key.pub

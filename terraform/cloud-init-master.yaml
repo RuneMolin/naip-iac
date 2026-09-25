@@ -1,0 +1,38 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - apt-transport-https
+  - ca-certificates
+
+write_files:
+  - path: /etc/rancher/k3s/config.yaml
+    content: |
+      cluster-init: true
+      tls-san:
+        - "${node_ip}"
+      disable:
+        - traefik
+        - servicelb
+      cluster-cidr: "${cluster_cidr}"
+      service-cidr: "${service_cidr}"
+      flannel-backend: "vxlan"
+      node-name: "${cluster_name}-master"
+      node-ip: "${node_ip}"
+
+runcmd:
+  # Install k3s
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v${k8s_version}" sh -s - server --config /etc/rancher/k3s/config.yaml
+  
+  # Wait for k3s to be ready
+  - until kubectl get nodes; do sleep 5; done
+  
+  # Create namespace for system components
+  - kubectl create namespace kafka || true
+  - kubectl create namespace argocd || true
+  - kubectl create namespace cert-manager || true
+  
+  # Set cluster labels
+  - kubectl label node ${cluster_name}-master node-role.kubernetes.io/master=true --overwrite

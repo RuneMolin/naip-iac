@@ -1,0 +1,30 @@
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to git (it contains sensitive data)
+
+# Hetzner Cloud API token (from https://console.hetzner.cloud/)
+hcloud_token = "YOUR_HETZNER_API_TOKEN_HERE"
+
+# Cluster configuration
+primary_cluster_name = "naip-primary-k8s"
+dr_cluster_name      = "naip-dr-k8s"
+
+# Node configuration
+# CPX21: 3 vCPU, 4 GB RAM, ~€10/month per node
+# CPX31: 4 vCPU, 8 GB RAM, ~€15/month per node
+# CPX41: 8 vCPU, 16 GB RAM, ~€30/month per node
+node_type  = "cpx21"
+node_count = 3
+
+# Datacenter locations
+# Available: nbg1 (Nuremberg), fsn1 (Falkenstein), hel1 (Helsinki)
+primary_location = "nbg1"
+dr_location      = "hel1"
+
+# Kubernetes version (use latest stable k3s version)
+k8s_version = "1.28"
+
+# SSH public key for cluster access (leave empty to use default ~/.ssh/id_rsa.pub)
+ssh_public_key = ""
+
+# Network zone (eu-central for German/Finnish datacenters)
+network_zone = "eu-central"

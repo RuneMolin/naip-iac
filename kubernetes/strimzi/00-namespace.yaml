@@ -1,0 +1,29 @@
+# Strimzi Kafka Operator Installation
+# This file installs the Strimzi operator for managing Kafka clusters
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka
+---
+# Install Strimzi Operator
+# Use latest stable release from: https://github.com/strimzi/strimzi-kafka-operator/releases
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: strimzi-cluster-operator
+  namespace: kafka
+  labels:
+    app: strimzi
+---
+# Installation instructions:
+# 
+# kubectl create -f kubernetes/strimzi/00-namespace.yaml
+# kubectl create -f 'https://strimzi.io/install/latest?namespace=kafka'
+#
+# Or use the specific version:
+# kubectl create -f 'https://strimzi.io/install/0.39.0?namespace=kafka'
+#
+# Verify installation:
+# kubectl get pods -n kafka -w
+# kubectl get crd | grep strimzi

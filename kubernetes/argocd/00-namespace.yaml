@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+# Argo CD Installation
+# This installs Argo CD for GitOps-based deployment management
+#
+# NOTE: terraform/addons.tf now installs Argo CD automatically via Helm
+# (helm_release.argocd_primary / helm_release.argocd_dr). This file is kept
+# as a manual fallback if you disable that automation.
+#
+# Installation:
+#   kubectl apply -f 00-namespace.yaml
+#   kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#
+# Access Argo CD UI:
+#   kubectl port-forward svc/argocd-server -n argocd 8080:443
+#   # Open browser: https://localhost:8080
+#
+# Get admin password:
+#   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+#
+# Login with CLI:
+#   argocd login localhost:8080
+#   argocd app list
+#
+# Documentation: https://argo-cd.readthedocs.io/en/stable/
