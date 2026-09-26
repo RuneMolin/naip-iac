@@ -34,3 +34,32 @@ This installs the required cluster add-ons (CCM, CSI, Ingress, cert-manager) plu
 
 ### Step 3: GitOps Handoff
 Once Argo CD is ready, hand off to the GitOps repository as described in `naip-argo-demo`.
+
+## Teardown
+
+Always destroy infrastructure in **reverse order** (**Add-ons first, then Cluster**) while the clusters are still running so that Hetzner Cloud Controller Manager (`hcloud-ccm`) and CSI can cleanly delete external Load Balancers and attached Volumes:
+
+### Using the Makefile
+```bash
+make teardown
+```
+Or step-by-step:
+```bash
+make addons-destroy    # Step 1: Destroys Helm charts and dynamic Hetzner LBs
+make cluster-destroy   # Step 2: Destroys VMs, networks, firewalls, and control-plane LBs
+```
+
+### Manual Teardown
+```bash
+# 1. Destroy Helm releases and dynamic Hetzner resources
+cd addons
+terraform destroy
+
+# 2. Destroy VMs, networks, firewalls, and base Load Balancers
+cd ../cluster
+terraform destroy
+
+# 3. (Optional) Remove local kubeconfigs
+rm -f kubeconfig-primary.yaml kubeconfig-dr.yaml
+```
+

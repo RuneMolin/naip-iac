@@ -81,6 +81,38 @@ This installs the cluster add-ons (CCM, CSI, Ingress NGINX, cert-manager) plus A
 and the Strimzi Kafka operator on both clusters. See the `next_steps` output for how
 to merge kubeconfigs and hand off to the GitOps repo.
 
+## Teardown
+
+To tear down all provisioned infrastructure, resources must be destroyed in **reverse order** (**Add-ons first, then Cluster**) while the Kubernetes API is still reachable. This ensures that dynamic Hetzner Load Balancers (created by `ingress-nginx` via CCM) and Volumes (CSI) are cleanly deprovisioned before cluster servers and networks are removed.
+
+### Using Make (Recommended)
+From the `terraform/` directory:
+```bash
+cd terraform
+make teardown
+```
+Or step-by-step:
+```bash
+make addons-destroy    # Step 1: Deletes Helm releases & dynamic Hetzner LBs/Volumes
+make cluster-destroy   # Step 2: Deletes VMs, networks, firewalls, and base LB
+```
+
+### Manual Teardown
+1. **Destroy Add-ons & Operators:**
+   ```bash
+   cd terraform/addons
+   terraform destroy
+   ```
+2. **Destroy Cluster Infrastructure:**
+   ```bash
+   cd ../cluster
+   terraform destroy
+   ```
+3. **(Optional) Clean up local kubeconfigs:**
+   ```bash
+   rm -f terraform/cluster/kubeconfig-primary.yaml terraform/cluster/kubeconfig-dr.yaml
+   ```
+
 ## Local State
 
 The default backend is local (`terraform.tfstate`). See `backend.tf` for
