@@ -8,6 +8,17 @@ resource "hcloud_ssh_key" "k8s" {
   public_key = var.ssh_public_key != "" ? var.ssh_public_key : file("${path.module}/naip-k8s-key.pub")
 }
 
+# Cluster join tokens
+resource "random_password" "primary_k3s_token" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "dr_k3s_token" {
+  length  = 32
+  special = false
+}
+
 # =============================================================================
 # PRIMARY CLUSTER
 # =============================================================================
@@ -45,11 +56,13 @@ resource "hcloud_server" "primary_master" {
   }
 
   user_data = templatefile("${path.module}/cloud-init-master.yaml", {
-    k8s_version  = var.k8s_version
+    k8s_channel  = "v${trimprefix(var.k8s_version, "v")}"
     cluster_name = var.primary_cluster_name
     node_ip      = "10.0.1.2"
+    lb_ip        = hcloud_load_balancer.primary.ipv4
     cluster_cidr = "10.42.0.0/16"
     service_cidr = "10.43.0.0/16"
+    k3s_token    = random_password.primary_k3s_token.result
   })
 }
 
@@ -74,9 +87,12 @@ resource "hcloud_server" "primary_workers" {
   }
 
   user_data = templatefile("${path.module}/cloud-init-worker.yaml", {
-    master_ip    = tolist(hcloud_server.primary_master.network)[0].ip
-    k8s_version  = var.k8s_version
+    master_ip    = "10.0.1.2"
+    k8s_channel  = "v${trimprefix(var.k8s_version, "v")}"
     cluster_name = var.primary_cluster_name
+    node_name    = "${var.primary_cluster_name}-worker-${count.index + 1}"
+    node_ip      = "10.0.1.${10 + count.index}"
+    k3s_token    = random_password.primary_k3s_token.result
   })
 
   depends_on = [
@@ -148,11 +164,13 @@ resource "hcloud_server" "dr_master" {
   }
 
   user_data = templatefile("${path.module}/cloud-init-master.yaml", {
-    k8s_version  = var.k8s_version
+    k8s_channel  = "v${trimprefix(var.k8s_version, "v")}"
     cluster_name = var.dr_cluster_name
     node_ip      = "10.1.1.2"
+    lb_ip        = hcloud_load_balancer.dr.ipv4
     cluster_cidr = "10.52.0.0/16"
     service_cidr = "10.53.0.0/16"
+    k3s_token    = random_password.dr_k3s_token.result
   })
 }
 
@@ -177,9 +195,12 @@ resource "hcloud_server" "dr_workers" {
   }
 
   user_data = templatefile("${path.module}/cloud-init-worker.yaml", {
-    master_ip    = tolist(hcloud_server.dr_master.network)[0].ip
-    k8s_version  = var.k8s_version
+    master_ip    = "10.1.1.2"
+    k8s_channel  = "v${trimprefix(var.k8s_version, "v")}"
     cluster_name = var.dr_cluster_name
+    node_name    = "${var.dr_cluster_name}-worker-${count.index + 1}"
+    node_ip      = "10.1.1.${10 + count.index}"
+    k3s_token    = random_password.dr_k3s_token.result
   })
 
   depends_on = [
@@ -351,24 +372,12 @@ resource "hcloud_firewall" "dr" {
 }
 
 # Attach firewalls to servers
-resource "hcloud_firewall_attachment" "primary_master" {
+resource "hcloud_firewall_attachment" "primary" {
   firewall_id = hcloud_firewall.primary.id
-  server_ids  = [hcloud_server.primary_master.id]
+  server_ids  = concat([hcloud_server.primary_master.id], hcloud_server.primary_workers[*].id)
 }
 
-resource "hcloud_firewall_attachment" "primary_workers" {
-  count       = var.node_count > 0 ? 1 : 0
-  firewall_id = hcloud_firewall.primary.id
-  server_ids  = hcloud_server.primary_workers[*].id
-}
-
-resource "hcloud_firewall_attachment" "dr_master" {
+resource "hcloud_firewall_attachment" "dr" {
   firewall_id = hcloud_firewall.dr.id
-  server_ids  = [hcloud_server.dr_master.id]
-}
-
-resource "hcloud_firewall_attachment" "dr_workers" {
-  count       = var.node_count > 0 ? 1 : 0
-  firewall_id = hcloud_firewall.dr.id
-  server_ids  = hcloud_server.dr_workers[*].id
+  server_ids  = concat([hcloud_server.dr_master.id], hcloud_server.dr_workers[*].id)
 }

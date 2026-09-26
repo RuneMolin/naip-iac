@@ -4,16 +4,11 @@ package_upgrade: true
 
 packages:
   - curl
+  - ca-certificates
 
 runcmd:
-  # Wait for master to be ready (retry for up to 5 minutes)
-  - for i in {1..60}; do nc -zv ${master_ip} 6443 && break || sleep 5; done
-  
-  # Get k3s join token from master
-  - until K3S_TOKEN=$(ssh -o StrictHostKeyChecking=no root@${master_ip} "cat /var/lib/rancher/k3s/server/node-token" 2>/dev/null); do sleep 10; done
-  
+  # Wait for master API server to be responsive (up to 5 minutes)
+  - for i in $(seq 1 60); do curl -k -s --connect-timeout 5 https://${master_ip}:6443/ping && break || sleep 5; done
+
   # Install k3s agent
-  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v${k8s_version}" K3S_URL=https://${master_ip}:6443 K3S_TOKEN=$K3S_TOKEN sh -s - agent
-  
-  # Label worker node
-  - sleep 30
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL="${k8s_channel}" K3S_URL="https://${master_ip}:6443" K3S_TOKEN="${k3s_token}" sh -s - agent --node-name="${node_name}" --node-ip="${node_ip}"

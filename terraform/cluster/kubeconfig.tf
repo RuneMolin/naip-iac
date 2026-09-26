@@ -7,6 +7,7 @@ resource "null_resource" "kubeconfig_primary" {
   depends_on = [hcloud_server.primary_master, hcloud_server.primary_workers]
 
   triggers = {
+    master_id = hcloud_server.primary_master.id
     master_ip = hcloud_server.primary_master.ipv4_address
   }
 
@@ -19,7 +20,8 @@ resource "null_resource" "kubeconfig_primary" {
         root@${hcloud_server.primary_master.ipv4_address} 'cat /etc/rancher/k3s/k3s.yaml' \
         | sed "s/127.0.0.1/${hcloud_server.primary_master.ipv4_address}/g" \
         > ${path.module}/kubeconfig-primary.yaml
-      kubectl config rename-context default ${var.primary_cluster_name} --kubeconfig=${path.module}/kubeconfig-primary.yaml
+      chmod 600 ${path.module}/kubeconfig-primary.yaml
+      kubectl config rename-context default ${var.primary_cluster_name} --kubeconfig=${path.module}/kubeconfig-primary.yaml || true
     EOT
   }
 }
@@ -28,6 +30,7 @@ resource "null_resource" "kubeconfig_dr" {
   depends_on = [hcloud_server.dr_master, hcloud_server.dr_workers]
 
   triggers = {
+    master_id = hcloud_server.dr_master.id
     master_ip = hcloud_server.dr_master.ipv4_address
   }
 
@@ -40,7 +43,8 @@ resource "null_resource" "kubeconfig_dr" {
         root@${hcloud_server.dr_master.ipv4_address} 'cat /etc/rancher/k3s/k3s.yaml' \
         | sed "s/127.0.0.1/${hcloud_server.dr_master.ipv4_address}/g" \
         > ${path.module}/kubeconfig-dr.yaml
-      kubectl config rename-context default ${var.dr_cluster_name} --kubeconfig=${path.module}/kubeconfig-dr.yaml
+      chmod 600 ${path.module}/kubeconfig-dr.yaml
+      kubectl config rename-context default ${var.dr_cluster_name} --kubeconfig=${path.module}/kubeconfig-dr.yaml || true
     EOT
   }
 }
