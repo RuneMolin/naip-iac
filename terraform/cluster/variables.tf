@@ -19,8 +19,8 @@ variable "dr_cluster_name" {
 variable "node_type" {
   description = "Hetzner server type for cluster nodes"
   type        = string
-  default     = "cpx21" # 3 vCPU, 4 GB RAM
-  # Alternatives: cpx31 (4 vCPU, 8 GB), cpx41 (8 vCPU, 16 GB)
+  default     = "cpx22" #  2 vCPUs (AMD), 4 GB RAM, 80 GB NVMe SSD.
+  # Alternatives: cpx32 (4 vCPU, 8 GB), cpx41 (8 vCPU, 16 GB)
 }
 
 variable "node_count" {

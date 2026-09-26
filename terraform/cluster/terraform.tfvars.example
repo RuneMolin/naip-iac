@@ -12,7 +12,7 @@ dr_cluster_name      = "naip-dr-k8s"
 # CPX21: 3 vCPU, 4 GB RAM, ~€10/month per node
 # CPX31: 4 vCPU, 8 GB RAM, ~€15/month per node
 # CPX41: 8 vCPU, 16 GB RAM, ~€30/month per node
-node_type  = "cpx21"
+node_type  = "cpx22"
 node_count = 3
 
 # Datacenter locations
