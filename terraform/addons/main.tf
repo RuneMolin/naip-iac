@@ -1,74 +1,38 @@
 # =============================================================================
-# KUBECONFIG RETRIEVAL (feeds the kubernetes/helm providers below)
+# LOCALS & PROVIDERS
+# Reads kubeconfig from cluster module; falls back to dummy-kubeconfig.yaml
+# during initial terraform plan before the cluster is applied.
 # =============================================================================
 
-resource "null_resource" "kubeconfig_primary" {
-  depends_on = [hcloud_server.primary_master, hcloud_server.primary_workers]
+locals {
+  kubeconfig_primary = fileexists(var.kubeconfig_primary_path) ? var.kubeconfig_primary_path : "${path.module}/dummy-kubeconfig.yaml"
+  kubeconfig_dr      = fileexists(var.kubeconfig_dr_path) ? var.kubeconfig_dr_path : "${path.module}/dummy-kubeconfig.yaml"
 
-  triggers = {
-    master_ip = hcloud_server.primary_master.ipv4_address
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i ${var.ssh_private_key_path} \
-        root@${hcloud_server.primary_master.ipv4_address} 'cloud-init status --wait'; do sleep 10; done
-      ssh -o StrictHostKeyChecking=no -i ${var.ssh_private_key_path} \
-        root@${hcloud_server.primary_master.ipv4_address} 'cat /etc/rancher/k3s/k3s.yaml' \
-        | sed "s/127.0.0.1/${hcloud_server.primary_master.ipv4_address}/g" \
-        > ${path.module}/kubeconfig-primary.yaml
-      kubectl config rename-context default ${var.primary_cluster_name} --kubeconfig=${path.module}/kubeconfig-primary.yaml
-    EOT
-  }
+  primary_network = var.primary_network_name != "" ? var.primary_network_name : "${var.primary_cluster_name}-network"
+  dr_network      = var.dr_network_name != "" ? var.dr_network_name : "${var.dr_cluster_name}-network"
 }
-
-resource "null_resource" "kubeconfig_dr" {
-  depends_on = [hcloud_server.dr_master, hcloud_server.dr_workers]
-
-  triggers = {
-    master_ip = hcloud_server.dr_master.ipv4_address
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i ${var.ssh_private_key_path} \
-        root@${hcloud_server.dr_master.ipv4_address} 'cloud-init status --wait'; do sleep 10; done
-      ssh -o StrictHostKeyChecking=no -i ${var.ssh_private_key_path} \
-        root@${hcloud_server.dr_master.ipv4_address} 'cat /etc/rancher/k3s/k3s.yaml' \
-        | sed "s/127.0.0.1/${hcloud_server.dr_master.ipv4_address}/g" \
-        > ${path.module}/kubeconfig-dr.yaml
-      kubectl config rename-context default ${var.dr_cluster_name} --kubeconfig=${path.module}/kubeconfig-dr.yaml
-    EOT
-  }
-}
-
-# =============================================================================
-# PROVIDERS (one aliased pair per cluster, pointed at the fetched kubeconfigs)
-# =============================================================================
 
 provider "kubernetes" {
   alias       = "primary"
-  config_path = "${path.module}/kubeconfig-primary.yaml"
+  config_path = local.kubeconfig_primary
 }
 
 provider "helm" {
   alias = "primary"
   kubernetes {
-    config_path = "${path.module}/kubeconfig-primary.yaml"
+    config_path = local.kubeconfig_primary
   }
 }
 
 provider "kubernetes" {
   alias       = "dr"
-  config_path = "${path.module}/kubeconfig-dr.yaml"
+  config_path = local.kubeconfig_dr
 }
 
 provider "helm" {
   alias = "dr"
   kubernetes {
-    config_path = "${path.module}/kubeconfig-dr.yaml"
+    config_path = local.kubeconfig_dr
   }
 }
 
@@ -77,8 +41,7 @@ provider "helm" {
 # =============================================================================
 
 resource "kubernetes_secret" "hcloud_primary" {
-  provider   = kubernetes.primary
-  depends_on = [null_resource.kubeconfig_primary]
+  provider = kubernetes.primary
 
   metadata {
     name      = "hcloud"
@@ -87,13 +50,12 @@ resource "kubernetes_secret" "hcloud_primary" {
 
   data = {
     token   = var.hcloud_token
-    network = hcloud_network.primary.name
+    network = local.primary_network
   }
 }
 
 resource "kubernetes_secret" "hcloud_dr" {
-  provider   = kubernetes.dr
-  depends_on = [null_resource.kubeconfig_dr]
+  provider = kubernetes.dr
 
   metadata {
     name      = "hcloud"
@@ -102,7 +64,7 @@ resource "kubernetes_secret" "hcloud_dr" {
 
   data = {
     token   = var.hcloud_token
-    network = hcloud_network.dr.name
+    network = local.dr_network
   }
 }
 
@@ -160,7 +122,6 @@ resource "helm_release" "ingress_nginx_primary" {
 
 resource "helm_release" "cert_manager_primary" {
   provider         = helm.primary
-  depends_on       = [null_resource.kubeconfig_primary]
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
@@ -180,7 +141,6 @@ resource "helm_release" "cert_manager_primary" {
 
 resource "helm_release" "strimzi_primary" {
   provider         = helm.primary
-  depends_on       = [null_resource.kubeconfig_primary]
   name             = "strimzi-kafka-operator"
   repository       = "https://strimzi.io/charts/"
   chart            = "strimzi-kafka-operator"
@@ -191,7 +151,6 @@ resource "helm_release" "strimzi_primary" {
 
 resource "helm_release" "argocd_primary" {
   provider         = helm.primary
-  depends_on       = [null_resource.kubeconfig_primary]
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
@@ -254,7 +213,6 @@ resource "helm_release" "ingress_nginx_dr" {
 
 resource "helm_release" "cert_manager_dr" {
   provider         = helm.dr
-  depends_on       = [null_resource.kubeconfig_dr]
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
@@ -274,7 +232,6 @@ resource "helm_release" "cert_manager_dr" {
 
 resource "helm_release" "strimzi_dr" {
   provider         = helm.dr
-  depends_on       = [null_resource.kubeconfig_dr]
   name             = "strimzi-kafka-operator"
   repository       = "https://strimzi.io/charts/"
   chart            = "strimzi-kafka-operator"
@@ -285,7 +242,6 @@ resource "helm_release" "strimzi_dr" {
 
 resource "helm_release" "argocd_dr" {
   provider         = helm.dr
-  depends_on       = [null_resource.kubeconfig_dr]
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"

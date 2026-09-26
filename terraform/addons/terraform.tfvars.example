@@ -1,0 +1,20 @@
+# Copy this file to terraform.tfvars and fill in your values,
+# or create a symbolic link to cluster/terraform.tfvars:
+#   ln -s ../cluster/terraform.tfvars terraform.tfvars
+#
+# DO NOT commit terraform.tfvars to git (it contains sensitive data)
+
+# Hetzner Cloud API token (required for creating the hcloud Kubernetes secret)
+hcloud_token = "YOUR_HETZNER_API_TOKEN_HERE"
+
+# Cluster configuration (must match cluster/ settings)
+primary_cluster_name = "naip-primary-k8s"
+dr_cluster_name      = "naip-dr-k8s"
+
+# Datacenter locations (used for ingress-nginx LoadBalancer location annotations)
+primary_location = "nbg1"
+dr_location      = "hel1"
+
+# Paths to kubeconfig files (defaults to relative path in cluster module)
+# kubeconfig_primary_path = "../cluster/kubeconfig-primary.yaml"
+# kubeconfig_dr_path      = "../cluster/kubeconfig-dr.yaml"

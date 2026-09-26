@@ -21,19 +21,27 @@ Argo CD self-manages everything from there.
 
 ```
 .
-├── terraform/              # Steps 1-4: clusters, kubeconfig retrieval, add-ons, Argo CD/Strimzi
-│   ├── main.tf             # Servers, network, firewall, SSH key, load balancers
-│   ├── addons.tf           # Kubeconfig retrieval + cluster add-ons + Argo CD/Strimzi (Helm)
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── versions.tf
-│   ├── backend.tf
-│   ├── cloud-init-master.yaml
-│   ├── cloud-init-worker.yaml
-│   └── terraform.tfvars.example
+├── terraform/
+│   ├── cluster/            # Steps 1-2: clusters, network, firewall, LB, kubeconfig retrieval
+│   │   ├── main.tf         # Servers, network, firewall, SSH key, load balancers
+│   │   ├── kubeconfig.tf   # Kubeconfig retrieval over SSH
+│   │   ├── cloud-init-master.yaml
+│   │   ├── cloud-init-worker.yaml
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── versions.tf
+│   │   ├── backend.tf
+│   │   └── terraform.tfvars.example
+│   └── addons/             # Steps 3-4: cluster add-ons + Argo CD/Strimzi (Helm)
+│       ├── main.tf         # Helm releases & Hetzner k8s secrets
+│       ├── variables.tf
+│       ├── outputs.tf
+│       ├── versions.tf
+│       ├── backend.tf
+│       └── terraform.tfvars.example
 └── kubernetes/
-    ├── strimzi/            # Manual fallback docs (automated by addons.tf by default)
-    └── argocd/             # Manual fallback docs (automated by addons.tf by default)
+    ├── strimzi/            # Manual fallback docs (automated by addons module)
+    └── argocd/             # Manual fallback docs (automated by addons module)
 ```
 
 ## Prerequisites
@@ -46,8 +54,9 @@ Argo CD self-manages everything from there.
 
 ## Quick Start
 
+### Step 1: Provision Clusters
 ```bash
-cd terraform
+cd terraform/cluster
 cp terraform.tfvars.example terraform.tfvars
 # edit terraform.tfvars: hcloud_token, ssh_public_key, ssh_private_key_path
 
@@ -56,10 +65,21 @@ terraform plan
 terraform apply
 ```
 
-`terraform apply` provisions both clusters, retrieves and renames their kubeconfig
-contexts (`kubeconfig-primary.yaml`, `kubeconfig-dr.yaml`), and installs the cluster
-add-ons, Argo CD, and the Strimzi Kafka operator on each cluster. See the
-`next_steps` output for how to merge kubeconfigs and hand off to the GitOps repo.
+`terraform apply` provisions both clusters and retrieves and renames their kubeconfig
+contexts (`kubeconfig-primary.yaml`, `kubeconfig-dr.yaml`).
+
+### Step 2: Install Cluster Add-ons & Operators
+```bash
+cd ../addons
+# terraform.tfvars can be symlinked to share tokens: ln -s ../cluster/terraform.tfvars .
+terraform init
+terraform plan
+terraform apply
+```
+
+This installs the cluster add-ons (CCM, CSI, Ingress NGINX, cert-manager) plus Argo CD
+and the Strimzi Kafka operator on both clusters. See the `next_steps` output for how
+to merge kubeconfigs and hand off to the GitOps repo.
 
 ## Local State
 

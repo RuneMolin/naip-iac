@@ -1,4 +1,4 @@
-# Terraform Backend Configuration
+# Terraform Backend Configuration - Add-ons
 #
 # Uncomment ONE of the options below:
 
@@ -10,7 +10,7 @@
 #     organization = "YOUR_ORG_NAME"
 #     
 #     workspaces {
-#       name = "naip-iac"
+#       name = "naip-iac-addons"
 #     }
 #   }
 # }
@@ -34,7 +34,7 @@ terraform {
 #       s3 = "https://fsn1.your-objectstorage.com"
 #     }
 #     bucket                      = "naip-terraform-state"
-#     key                         = "naip-iac/terraform.tfstate"
+#     key                         = "addons/terraform.tfstate"
 #     region                      = "us-east-1" # Required but ignored
 #     skip_credentials_validation = true
 #     skip_metadata_api_check     = true
@@ -43,5 +43,3 @@ terraform {
 #     use_path_style              = true
 #   }
 # }
-
-# Note: For production use, enable state locking with DynamoDB or equivalent

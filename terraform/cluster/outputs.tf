@@ -48,48 +48,62 @@ output "dr_network_id" {
   value       = hcloud_network.dr.id
 }
 
-# Instructions for accessing clusters
+output "primary_network_name" {
+  description = "Name of primary cluster private network"
+  value       = hcloud_network.primary.name
+}
+
+output "dr_network_name" {
+  description = "Name of DR cluster private network"
+  value       = hcloud_network.dr.name
+}
+
+output "kubeconfig_primary_path" {
+  description = "Path to primary cluster kubeconfig"
+  value       = "${path.module}/kubeconfig-primary.yaml"
+}
+
+output "kubeconfig_dr_path" {
+  description = "Path to DR cluster kubeconfig"
+  value       = "${path.module}/kubeconfig-dr.yaml"
+}
+
 output "next_steps" {
-  description = "Next steps to access the clusters"
+  description = "Next steps to deploy add-ons and access the clusters"
   value = <<-EOT
-  
+
   ============================================================
-  CLUSTERS PROVISIONED SUCCESSFULLY
+  CLUSTERS PROVISIONED SUCCESSFULLY (Steps 1 & 2)
   ============================================================
-  
+
   Primary Cluster: ${var.primary_cluster_name}
   Master IP: ${hcloud_server.primary_master.ipv4_address}
   Location: ${var.primary_location}
-  
+  Kubeconfig: ${path.module}/kubeconfig-primary.yaml
+
   DR Cluster: ${var.dr_cluster_name}
   Master IP: ${hcloud_server.dr_master.ipv4_address}
   Location: ${var.dr_location}
-  
+  Kubeconfig: ${path.module}/kubeconfig-dr.yaml
+
   ============================================================
   NEXT STEPS
   ============================================================
-  
-  Kubeconfigs (kubeconfig-primary.yaml, kubeconfig-dr.yaml) were retrieved
-  automatically, and cluster add-ons (hcloud-cloud-controller-manager,
-  hcloud-csi, ingress-nginx, cert-manager) plus Argo CD and the Strimzi
-  Kafka operator were installed automatically by addons.tf (steps 1-4).
-  
-  1. Merge kubeconfigs for local kubectl access:
+
+  1. Deploy cluster add-ons (CCM, CSI, ingress-nginx, cert-manager, Argo CD, Strimzi):
+     cd ../addons
+     cp terraform.tfvars.example terraform.tfvars  # or symlink: ln -s ../cluster/terraform.tfvars .
+     terraform init
+     terraform apply
+
+  2. Merge kubeconfigs for local kubectl access:
      export KUBECONFIG=${path.module}/kubeconfig-primary.yaml:${path.module}/kubeconfig-dr.yaml
      kubectl config view --flatten > ~/.kube/config
-  
-  2. Verify access:
-     kubectl config use-context ${var.primary_cluster_name}
-     kubectl get nodes
-     kubectl config use-context ${var.dr_cluster_name}
-     kubectl get nodes
-  
-  3. This repo's job ends here (step 4). Hand off to GitOps (step 5):
-     clone github.com/RuneMolin/naip-argo-demo (or your fork) and apply
-     the relevant bootstrap manifest once Argo CD is confirmed ready:
-       kubectl apply -f bootstrap/sandbox.yaml
-     From then on Argo CD self-manages wrapper/ -> solution/ -> kafka/.
-  
+
+  3. Hand off to GitOps (step 5):
+     Once Argo CD is confirmed ready, apply the relevant bootstrap manifest:
+       kubectl apply -f bootstrap/sandbox.yaml --kubeconfig=${path.module}/kubeconfig-primary.yaml
+
   ============================================================
   EOT
 }
