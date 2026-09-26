@@ -90,7 +90,7 @@ resource "helm_release" "hcloud_ccm_primary" {
 
 resource "helm_release" "hcloud_csi_primary" {
   provider   = helm.primary
-  depends_on = [kubernetes_secret.hcloud_primary]
+  depends_on = [kubernetes_secret.hcloud_primary, helm_release.hcloud_ccm_primary]
 
   name       = "hcloud-csi"
   repository = "https://charts.hetzner.cloud"
@@ -118,10 +118,16 @@ resource "helm_release" "ingress_nginx_primary" {
     name  = "controller.service.annotations.load-balancer\\.hetzner\\.cloud/location"
     value = var.primary_location
   }
+
+  set {
+    name  = "controller.service.annotations.load-balancer\\.hetzner\\.cloud/use-private-ip"
+    value = "true"
+  }
 }
 
 resource "helm_release" "cert_manager_primary" {
   provider         = helm.primary
+  depends_on       = [helm_release.hcloud_ccm_primary]
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
@@ -141,6 +147,7 @@ resource "helm_release" "cert_manager_primary" {
 
 resource "helm_release" "strimzi_primary" {
   provider         = helm.primary
+  depends_on       = [helm_release.hcloud_ccm_primary]
   name             = "strimzi-kafka-operator"
   repository       = "https://strimzi.io/charts/"
   chart            = "strimzi-kafka-operator"
@@ -151,6 +158,7 @@ resource "helm_release" "strimzi_primary" {
 
 resource "helm_release" "argocd_primary" {
   provider         = helm.primary
+  depends_on       = [helm_release.hcloud_ccm_primary]
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
@@ -181,7 +189,7 @@ resource "helm_release" "hcloud_ccm_dr" {
 
 resource "helm_release" "hcloud_csi_dr" {
   provider   = helm.dr
-  depends_on = [kubernetes_secret.hcloud_dr]
+  depends_on = [kubernetes_secret.hcloud_dr, helm_release.hcloud_ccm_dr]
 
   name       = "hcloud-csi"
   repository = "https://charts.hetzner.cloud"
@@ -209,10 +217,16 @@ resource "helm_release" "ingress_nginx_dr" {
     name  = "controller.service.annotations.load-balancer\\.hetzner\\.cloud/location"
     value = var.dr_location
   }
+
+  set {
+    name  = "controller.service.annotations.load-balancer\\.hetzner\\.cloud/use-private-ip"
+    value = "true"
+  }
 }
 
 resource "helm_release" "cert_manager_dr" {
   provider         = helm.dr
+  depends_on       = [helm_release.hcloud_ccm_dr]
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
@@ -232,6 +246,7 @@ resource "helm_release" "cert_manager_dr" {
 
 resource "helm_release" "strimzi_dr" {
   provider         = helm.dr
+  depends_on       = [helm_release.hcloud_ccm_dr]
   name             = "strimzi-kafka-operator"
   repository       = "https://strimzi.io/charts/"
   chart            = "strimzi-kafka-operator"
@@ -242,6 +257,7 @@ resource "helm_release" "strimzi_dr" {
 
 resource "helm_release" "argocd_dr" {
   provider         = helm.dr
+  depends_on       = [helm_release.hcloud_ccm_dr]
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"

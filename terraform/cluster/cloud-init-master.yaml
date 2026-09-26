@@ -18,13 +18,24 @@ write_files:
       disable:
         - traefik
         - servicelb
+      disable-cloud-controller: true
+      kubelet-arg:
+        - "cloud-provider=external"
+      flannel-iface: "enp7s0"
+      node-ip: "${node_ip}"
+      advertise-address: "${node_ip}"
       cluster-cidr: "${cluster_cidr}"
       service-cidr: "${service_cidr}"
       flannel-backend: "vxlan"
       node-name: "${cluster_name}-master"
-      node-ip: "${node_ip}"
 
 runcmd:
+  # Disable IPv6 to prevent dual-stack image pull issues from registries
+  - sysctl -w net.ipv6.conf.all.disable_ipv6=1
+  - sysctl -w net.ipv6.conf.default.disable_ipv6=1
+  - echo 'net.ipv6.conf.all.disable_ipv6 = 1' >> /etc/sysctl.d/99-disable-ipv6.conf
+  - echo 'net.ipv6.conf.default.disable_ipv6 = 1' >> /etc/sysctl.d/99-disable-ipv6.conf
+
   # Fetch public IP from Hetzner metadata to include in TLS SAN
   - PUBLIC_IP=$(curl -s --connect-timeout 5 http://169.254.169.254/hetzner/v1/metadata/public-ipv4 || true)
 
